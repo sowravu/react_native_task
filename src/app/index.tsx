@@ -1,98 +1,161 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useRef } from "react";
+import {
+  Text,
+  View,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+const { width } = Dimensions.get("window");
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+export default function Index() {
+  const router = useRouter();
+  const scaleValue = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleValue, {
+      toValue: 0.9,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleValue, {
+      toValue: 1,
+      friction: 4,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      {/* Top Header or Pagination Indicator spacer */}
+      <View style={styles.headerSpacer} />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      {/* Illustration Section */}
+      <View style={styles.illustrationContainer}>
+        <Image
+          source={require("../../assets/images/onboarding_illustration.png")}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
+      </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+      {/* Content and Actions Section */}
+      <View style={styles.bottomSection}>
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>Your Credit Score</Text>
+          <Text style={styles.subtitle}>
+            We provide you with the tools to monitor, understand, and improve
+            your credit score.
+          </Text>
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        {/* Circular Interactive Next Button */}
+        <Animated.View
+          style={[styles.buttonContainer, { transform: [{ scale: scaleValue }] }]}
+        >
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            onPress={() => router.push("/login")}
+            style={styles.outerCircle}
+          >
+            <View style={styles.innerCircle}>
+              <Feather name="chevron-right" size={26} color="#FFF" />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: "#FFFFFF",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  headerSpacer: {
+    height: 40,
+    width: "100%",
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  illustrationContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 20,
+  },
+  illustration: {
+    width: width * 0.85,
+    height: width * 0.85,
+    maxHeight: 380,
+  },
+  bottomSection: {
+    width: "100%",
+    paddingHorizontal: 32,
+    paddingBottom: 40,
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  textContainer: {
+    marginBottom: 24,
+    alignItems: "flex-start",
   },
   title: {
-    textAlign: 'center',
+    fontSize: 34,
+    fontWeight: "700",
+    color: "#0F172A", // Modern slate-900
+    letterSpacing: -0.8,
+    marginBottom: 12,
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: "#64748B", // Modern slate-500
+    fontWeight: "400",
+    letterSpacing: -0.2,
+    maxWidth: "85%",
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  buttonContainer: {
+    alignSelf: "flex-end",
+    marginTop: 10,
+  },
+  outerCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2,
+    borderColor: "#3B82F6", // Modern blue-500
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 3,
+  },
+  innerCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#3B82F6",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
 });

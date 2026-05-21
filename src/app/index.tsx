@@ -94,16 +94,14 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   illustrationContainer: {
-    flex: 1,
+    flex: 1.8, // Allow illustration to expand and occupy more screen real estate
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
-    paddingHorizontal: 20,
   },
   illustration: {
-    width: width * 0.85,
-    height: width * 0.85,
-    maxHeight: 380,
+    width: "100%",
+    height: "100%",
   },
   bottomSection: {
     width: "100%",
@@ -140,7 +138,7 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 38,
     borderWidth: 2,
-    borderColor: "#3B82F6", // Modern blue-500
+    borderColor: "#346AFD", // Premium Kojo brand blue
     justifyContent: "center",
     alignItems: "center",
     padding: 3,
@@ -149,10 +147,10 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#346AFD",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#3B82F6",
+    shadowColor: "#346AFD",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

@@ -1,4 +1,5 @@
-import React, { useRef } from "react";
+import * as React from "react";
+import { useRef } from "react";
 import {
   Text,
   View,
@@ -36,23 +37,20 @@ export default function Index() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="dark" />
-
-      {/* Top Header or Pagination Indicator spacer */}
-      <View style={styles.headerSpacer} />
 
       {/* Illustration Section */}
       <View style={styles.illustrationContainer}>
         <Image
           source={require("../../assets/images/onboarding_illustration.png")}
           style={styles.illustration}
-          resizeMode="contain"
+          resizeMode="cover"
         />
       </View>
 
       {/* Content and Actions Section */}
-      <View style={styles.bottomSection}>
+      <SafeAreaView style={styles.bottomSection} edges={["bottom", "left", "right"]}>
         <View style={styles.textContainer}>
           <Text style={styles.title}>Your Credit Score</Text>
           <Text style={styles.subtitle}>
@@ -77,8 +75,8 @@ export default function Index() {
             </View>
           </TouchableOpacity>
         </Animated.View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -86,17 +84,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerSpacer: {
-    height: 40,
-    width: "100%",
   },
   illustrationContainer: {
-    flex: 1.8, // Allow illustration to expand and occupy more screen real estate
-    justifyContent: "center",
-    alignItems: "center",
+    flex: 1.6, // Allow illustration to expand and occupy more screen real estate
     width: "100%",
   },
   illustration: {

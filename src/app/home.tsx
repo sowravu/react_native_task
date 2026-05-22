@@ -1,4 +1,5 @@
-import React from "react";
+import * as React from "react";
+import { useState } from "react";
 import {
   Text,
   View,
@@ -12,6 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { BlurView } from "expo-blur";
+const TypedBlurView = BlurView as any;
 import Svg, {
   Path,
   Defs,
@@ -20,12 +23,34 @@ import Svg, {
   Line,
   Rect,
   Text as SvgText,
+  G,
 } from "react-native-svg";
 
 const { width } = Dimensions.get("window");
 
+// Segmented Arc Polar Math Helpers
+const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+  const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY - radius * Math.sin(angleInRadians),
+  };
+};
+
+const describeArc = (x: number, y: number, radius: number, startAngle: number, endAngle: number) => {
+  const start = polarToCartesian(x, y, radius, startAngle);
+  const end = polarToCartesian(x, y, radius, endAngle);
+  const largeArcFlag = Math.abs(startAngle - endAngle) <= 180 ? "0" : "1";
+  
+  return [
+    "M", start.x, start.y,
+    "A", radius, radius, 0, largeArcFlag, 1, end.x, end.y
+  ].join(" ");
+};
+
 export default function Home() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"home" | "messages" | "analytics" | "wallet" | "profile">("home");
 
   // Credit Score Calculations
   const minScore = 400;
@@ -33,12 +58,53 @@ export default function Home() {
   const currentScore = 704;
   const totalRange = maxScore - minScore;
   const progressRatio = (currentScore - minScore) / totalRange;
+  const endAngleLimit = 180 - (180 * progressRatio);
 
-  // Arc math for react-native-svg
-  // Circle segment of radius 80, centered at (100, 100)
-  // Arc length is pi * R = 3.14159 * 80 = 251.3
-  const strokeDasharray = 251.3;
-  const strokeDashoffset = strokeDasharray * (1 - progressRatio);
+  const renderSegment = (
+    index: number,
+    startAngle: number,
+    endAngle: number,
+    activeColor: string
+  ) => {
+    const gap = 5;
+    const sAngle = startAngle - gap;
+    const eAngle = endAngle + gap;
+
+    // Background grey path
+    const bgPath = describeArc(100, 110, 80, sAngle, eAngle);
+
+    // Active path logic
+    let activePath = null;
+    if (endAngleLimit < startAngle) {
+      const activeEnd = Math.max(eAngle, Math.min(sAngle, endAngleLimit));
+      if (activeEnd < sAngle) {
+        activePath = describeArc(100, 110, 80, sAngle, activeEnd);
+      }
+    }
+
+    return (
+      <G key={`seg-${index}`}>
+        {/* Inactive background segment */}
+        <Path
+          d={bgPath}
+          stroke="#E2E8F0"
+          strokeWidth="10"
+          strokeLinecap="round"
+          fill="none"
+        />
+        {/* Active colored progress segment */}
+        {activePath && (
+          <Path
+            d={activePath}
+            stroke={activeColor}
+            strokeWidth="10"
+            strokeLinecap="round"
+            fill="none"
+          />
+        )}
+      </G>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,35 +131,10 @@ export default function Home() {
         <View style={styles.card}>
           <View style={styles.gaugeContainer}>
             <Svg width={200} height={120} viewBox="0 0 200 120">
-              <Defs>
-                <LinearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <Stop offset="0%" stopColor="#EF4444" />
-                  <Stop offset="25%" stopColor="#F97316" />
-                  <Stop offset="55%" stopColor="#FACC15" />
-                  <Stop offset="80%" stopColor="#A3E635" />
-                  <Stop offset="100%" stopColor="#22C55E" />
-                </LinearGradient>
-              </Defs>
-              
-              {/* Background Arc */}
-              <Path
-                d="M 20,110 A 80,80 0 0,1 180,110"
-                stroke="#F1F5F9"
-                strokeWidth="12"
-                strokeLinecap="round"
-                fill="none"
-              />
-              
-              {/* Progress Arc */}
-              <Path
-                d="M 20,110 A 80,80 0 0,1 180,110"
-                stroke="url(#gaugeGrad)"
-                strokeWidth="12"
-                strokeLinecap="round"
-                fill="none"
-                strokeDasharray={strokeDasharray}
-                strokeDashoffset={strokeDashoffset}
-              />
+              {renderSegment(1, 180, 135, "#FF5B35")}
+              {renderSegment(2, 135, 90, "#FFA834")}
+              {renderSegment(3, 90, 45, "#D4E738")}
+              {renderSegment(4, 45, 0, "#8CD83B")}
             </Svg>
 
             {/* Inner Gauge Text Overlay */}
@@ -209,41 +250,159 @@ export default function Home() {
 
       {/* Sleek Custom Bottom Tab Bar */}
       <View style={styles.tabBar}>
-        {/* Home Tab (Active) */}
-        <TouchableOpacity style={styles.tabItem} activeOpacity={0.8}>
-          <View style={styles.activeTabCircle}>
-            <Ionicons name="home" size={20} color="#3B82F6" />
-          </View>
-          <Text style={styles.tabLabelActive}>Home</Text>
-          <View style={styles.tabDotActive} />
-        </TouchableOpacity>
-
-        {/* Messages Tab */}
-        <TouchableOpacity style={styles.tabItem} activeOpacity={0.8}>
-          <Ionicons name="chatbubble-outline" size={22} color="#94A3B8" />
-        </TouchableOpacity>
-
-        {/* Analytics Tab */}
-        <TouchableOpacity style={styles.tabItem} activeOpacity={0.8}>
-          <Ionicons name="pie-chart-outline" size={22} color="#94A3B8" />
-        </TouchableOpacity>
-
-        {/* Wallet Tab */}
-        <TouchableOpacity style={styles.tabItem} activeOpacity={0.8}>
-          <Ionicons name="card-outline" size={22} color="#94A3B8" />
-        </TouchableOpacity>
-
-        {/* Profile Tab */}
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          activeOpacity={0.8}
-          onPress={() => router.replace("/login")}
+        <TypedBlurView
+          intensity={80}
+          tint="light"
+          style={{
+            position: "absolute",
+            left: "1.37%",
+            right: "0.87%",
+            top: 13,
+            height: 70,
+            borderRadius: 35,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor: "rgba(255, 255, 255, 0.35)",
+            backgroundColor: "rgba(255, 255, 255, 0.08)",
+          }}
+        />
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 402 83"
+          fill="none"
+          preserveAspectRatio="xMidYMid meet"
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
         >
-          <Image
-            source={require("../../assets/images/sarah_avatar.png")}
-            style={styles.avatarImage}
+          {/* Transparent SVG Rect to preserve structural layout */}
+          <Rect
+            x="5.5"
+            y="13"
+            width="393"
+            height="70"
+            rx="35"
+            fill="transparent"
           />
-        </TouchableOpacity>
+
+          {/* Home Tab Icon */}
+          <G transform="translate(42, 36)">
+            <Path
+              d="M9.09644 3.31476C10.3496 2.34403 12.3345 2.23587 13.7234 3.02863L13.9929 3.19952L19.7537 7.2298C20.2227 7.55826 20.6665 8.09692 20.9939 8.72394C21.3213 9.35112 21.5095 10.0242 21.5095 10.5999V17.3802C21.5094 19.6538 19.664 21.5001 17.3904 21.5003H6.61011C4.3378 21.5003 2.49022 19.6455 2.48999 17.3704V10.47L2.4978 10.265C2.53449 9.77632 2.69782 9.22066 2.95874 8.69073C3.25678 8.08546 3.66124 7.55653 4.08765 7.22394L9.09644 3.31476ZM11.9998 13.7503C11.3137 13.7504 10.7498 14.3142 10.7498 15.0003V18.0003C10.7499 18.6862 11.3138 19.2502 11.9998 19.2503C12.6858 19.2503 13.2496 18.6863 13.2498 18.0003V15.0003C13.2498 14.3142 12.6859 13.7503 11.9998 13.7503Z"
+              fill={activeTab === "home" ? "#346AFD" : "#484C52"}
+              stroke={activeTab === "home" ? "#346AFD" : "#484C52"}
+            />
+          </G>
+          {activeTab === "home" && (
+            <Path
+              d="M43.96 58.66V67H42.592V63.352H38.668V67H37.3V58.66H38.668V62.236H42.592V58.66H43.96ZM48.629 67.108C48.005 67.108 47.441 66.968 46.937 66.688C46.433 66.4 46.037 66 45.749 65.488C45.461 64.968 45.317 64.368 45.317 63.688C45.317 63.016 45.465 62.42 45.761 61.9C46.057 61.38 46.461 60.98 46.973 60.7C47.485 60.42 48.057 60.28 48.689 60.28C49.321 60.28 49.893 60.42 50.405 60.7C50.917 60.98 51.321 61.38 51.617 61.9C51.913 62.42 52.061 63.016 52.061 63.688C52.061 64.36 51.909 64.956 51.605 65.476C51.301 65.996 50.885 66.4 50.357 66.688C49.837 66.968 49.261 67.108 48.629 67.108ZM48.629 65.92C48.981 65.92 49.309 65.836 49.613 65.668C49.925 65.5 50.177 65.248 50.369 64.912C50.561 64.576 50.657 64.168 50.657 63.688C50.657 63.208 50.565 62.804 50.381 62.476C50.197 62.14 49.953 61.888 49.649 61.72C49.345 61.552 49.017 61.468 48.665 61.468C48.313 61.468 47.985 61.552 47.681 61.72C47.385 61.888 47.149 62.14 46.973 62.476C46.797 62.804 46.709 63.208 46.709 63.688C46.709 64.4 46.889 64.952 47.249 65.344C47.617 65.728 48.077 65.92 48.629 65.92ZM61.4173 60.28C61.9373 60.28 62.4013 60.388 62.8093 60.604C63.2253 60.82 63.5493 61.14 63.7813 61.564C64.0213 61.988 64.1413 62.5 64.1413 63.1V67H62.7853V63.304C62.7853 62.712 62.6373 62.26 62.3413 61.948C62.0453 61.628 61.6413 61.468 61.1293 61.468C60.6173 61.468 60.2093 61.628 59.9053 61.948C59.6093 62.26 59.4613 62.712 59.4613 63.304V67H58.1053V63.304C58.1053 62.712 57.9573 62.26 57.6613 61.948C57.3653 61.628 56.9613 61.468 56.4493 61.468C55.9373 61.468 55.5293 61.628 55.2253 61.948C54.9293 62.26 54.7813 62.712 54.7813 63.304V67H53.4133V60.388H54.7813V61.144C55.0053 60.872 55.2893 60.66 55.6333 60.508C55.9773 60.356 56.3453 60.28 56.7373 60.28C57.2653 60.28 57.7373 60.392 58.1533 60.616C58.5693 60.84 58.8893 61.164 59.1133 61.588C59.3133 61.188 59.6253 60.872 60.0493 60.64C60.4733 60.4 60.9293 60.28 61.4173 60.28ZM71.9421 63.532C71.9421 63.78 71.9261 64.004 71.8941 64.204H66.8421C66.8821 64.732 67.0781 65.156 67.4301 65.476C67.7821 65.796 68.2141 65.956 68.7261 65.956C69.4621 65.956 69.9821 65.648 70.2861 65.032H71.7621C71.5621 65.64 71.1981 66.14 70.6701 66.532C70.1501 66.916 69.5021 67.108 68.7261 67.108C68.0941 67.108 67.5261 66.968 67.0221 66.688C66.5261 66.4 66.1341 66 65.8461 65.488C65.5661 64.968 65.4261 64.368 65.4261 63.688C65.4261 63.008 65.5621 62.412 65.8341 61.9C66.1141 61.38 66.5021 60.98 66.9981 60.7C67.5021 60.42 68.0781 60.28 68.7261 60.28C69.3501 60.28 69.9061 60.416 70.3941 60.688C70.8821 60.96 71.2621 61.344 71.5341 61.84C71.8061 62.328 71.9421 62.892 71.9421 63.532ZM70.5141 63.1C70.5061 62.596 70.3261 62.192 69.9741 61.888C69.6221 61.584 69.1861 61.432 68.6661 61.432C68.1941 61.432 67.7901 61.584 67.4541 61.888C67.1181 62.184 66.9181 62.588 66.8541 63.1H70.5141Z"
+              fill="#346AFD"
+            />
+          )}
+
+          {/* Messages Tab Icon */}
+          <G transform="translate(116, 36)">
+            <Path
+              d="M2.25 12.76C2.25 14.36 3.373 15.754 4.957 15.987C6.044 16.147 7.142 16.27 8.25 16.356V21L12.326 16.924C12.6024 16.6493 12.9735 16.4909 13.363 16.481C15.2644 16.4284 17.161 16.2634 19.043 15.987C20.627 15.754 21.75 14.361 21.75 12.759V6.741C21.75 5.139 20.627 3.746 19.043 3.513C16.711 3.17072 14.357 2.99926 12 3C9.608 3 7.256 3.175 4.957 3.513C3.373 3.746 2.25 5.14 2.25 6.741V12.759V12.76Z"
+              stroke={activeTab === "messages" ? "#346AFD" : "#484C52"}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </G>
+
+          {/* Analytics Tab Icon */}
+          <G transform="translate(190, 36)">
+            <Path
+              d="M18.32 12C20.92 12 22 11 21.04 7.72C20.39 5.51 18.49 3.61 16.28 2.96C13 2 12 3.08 12 5.68V8.56C12 11 13 12 15 12H18.32Z"
+              stroke={activeTab === "analytics" ? "#346AFD" : "#484C52"}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <Path
+              d="M20.0001 14.7C19.0701 19.33 14.6301 22.69 9.58005 21.87C5.79005 21.26 2.74005 18.21 2.12005 14.42C1.31005 9.39001 4.65005 4.95001 9.26005 4.01001"
+              stroke={activeTab === "analytics" ? "#346AFD" : "#484C52"}
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </G>
+
+          {/* Wallet Tab Icon */}
+          <Path
+            d="M266.05 54.75C271.386 54.7457 276.698 55.4522 281.847 56.851C282.574 57.049 283.3 56.509 283.3 55.755V54.75M267.55 40.5V41.25C267.55 41.4489 267.471 41.6397 267.33 41.7803C267.19 41.921 266.999 42 266.8 42H266.05M266.05 42V41.625C266.05 41.004 266.554 40.5 267.175 40.5H284.05M266.05 42V51M284.05 40.5V41.25C284.05 41.664 284.386 42 284.8 42H285.55M284.05 40.5H284.425C285.046 40.5 285.55 41.004 285.55 41.625V51.375C285.55 51.996 285.046 52.5 284.425 52.5H284.05M266.05 51V51.375C266.05 51.6734 266.169 51.9595 266.38 52.1705C266.591 52.3815 266.877 52.5 267.175 52.5H267.55M266.05 51H266.8C266.999 51 267.19 51.079 267.33 51.2197C267.471 51.3603 267.55 51.5511 267.55 51.75V52.5M284.05 52.5V51.75C284.05 51.5511 284.129 51.3603 284.27 51.2197C284.41 51.079 284.601 51 284.8 51H285.55M284.05 52.5H267.55M278.8 46.5C278.8 47.2956 278.484 48.0587 277.921 48.6213C277.359 49.1839 276.596 49.5 275.8 49.5C275.004 49.5 274.241 49.1839 273.679 48.6213C273.116 48.0587 272.8 47.2956 272.8 46.5C272.8 45.7044 273.116 44.9413 273.679 44.3787C274.241 43.8161 275.004 43.5 275.8 43.5C276.596 43.5 277.359 43.8161 277.921 44.3787C278.484 44.9413 278.8 45.7044 278.8 46.5ZM281.8 46.5H281.808V46.508H281.8V46.5ZM269.8 46.5H269.808V46.508H269.8V46.5Z"
+            stroke={activeTab === "wallet" ? "#346AFD" : "#484C52"}
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </Svg>
+
+        {/* Absolute responsive transparent touch overlays */}
+        <View
+          style={{
+            position: "absolute",
+            left: "4.23%",
+            right: "3.73%",
+            top: 13,
+            height: 70,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <TouchableOpacity
+            style={{ flex: 1, height: "100%", justifyContent: "center", alignItems: "center" }}
+            onPress={() => setActiveTab("home")}
+            activeOpacity={0.7}
+          />
+          <TouchableOpacity
+            style={{ flex: 1, height: "100%", justifyContent: "center", alignItems: "center" }}
+            onPress={() => {
+              setActiveTab("messages");
+              router.replace("/messages");
+            }}
+            activeOpacity={0.7}
+          />
+          <TouchableOpacity
+            style={{ flex: 1, height: "100%", justifyContent: "center", alignItems: "center" }}
+            onPress={() => setActiveTab("analytics")}
+            activeOpacity={0.7}
+          />
+          <TouchableOpacity
+            style={{ flex: 1, height: "100%", justifyContent: "center", alignItems: "center" }}
+            onPress={() => setActiveTab("wallet")}
+            activeOpacity={0.7}
+          />
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              height: "100%",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onPress={() => {
+              setActiveTab("profile");
+              router.replace("/profile");
+            }}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={require("../../assets/images/sarah_avatar.png")}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                borderWidth: 1.5,
+                borderColor: activeTab === "profile" ? "#346AFD" : "#E2E8F0",
+              }}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -438,54 +597,15 @@ const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
     bottom: 24,
-    left: 24,
-    right: 24,
-    height: 64,
-    borderRadius: 22,
-    backgroundColor: "rgba(255, 255, 255, 0.95)", // High quality solid backing for blur illusion
-    flexDirection: "row",
-    justifyContent: "space-around",
+    width: width > 402 ? 402 : width - 16,
+    alignSelf: "center",
+    height: 83,
+    justifyContent: "center",
     alignItems: "center",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-    paddingHorizontal: 8,
-  },
-  tabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    width: (width - 48) / 5,
-  },
-  activeTabCircle: {
-    backgroundColor: "#EFF6FF",
-    padding: 8,
-    borderRadius: 12,
-    marginBottom: 1,
-  },
-  tabLabelActive: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#3B82F6",
-    marginTop: 1,
-  },
-  tabDotActive: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#3B82F6",
-    position: "absolute",
-    bottom: 2,
-  },
-  avatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
   },
 });
